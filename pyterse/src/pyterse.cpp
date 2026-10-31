@@ -229,7 +229,9 @@
       * @throws py::value_error if dimensions do not match
       */
      auto insert = [] <typename T> (Terse<Concurrent>& terse, std::size_t pos, py::array& data, Terse_mode mode, T type) {
-         auto const buf = data.request();
+         // The frames are read from contiguous memory.
+         auto const contiguous = py::array::ensure(data, py::array::c_style);
+         auto const buf = contiguous.request();
          auto const shape = std::vector<size_t>(buf.shape.begin(), buf.shape.end());
          auto dim = std::vector<size_t>(shape.begin() + (shape.size() <= 2 ? 0 : 1), shape.end());
          if (terse.number_of_frames() == 0) terse.dim(dim);
@@ -253,6 +255,9 @@
       * @throws py::value_error if dimensions do not match
       */
      auto prolix = [&] <typename T> (Terse<Concurrent>& terse, py::array& data, T type) {
+         // The frames are written to contiguous memory.
+         if (!(data.flags() & py::array::c_style) || !data.writeable())
+             throw py::value_error("Terse can only expand data into a C-contiguous and writeable array.");
          auto const buf = data.request();
          auto const shape = std::vector<size_t>(buf.shape.begin(), buf.shape.end());
          if (shape != pyshape_of_terse(terse))
