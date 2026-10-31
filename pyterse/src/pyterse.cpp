@@ -209,7 +209,8 @@
       */
      auto pyshape_of_terse = [] (Terse<Concurrent>& terse) {
          if (terse.dim().empty())
-             return std::vector<size_t>({terse.size()});
+             return terse.number_of_frames() > 1 ? std::vector<size_t>({terse.number_of_frames(), terse.size()})
+                                                 : std::vector<size_t>({terse.size()});
          if (terse.number_of_frames() == 1)
              return terse.dim();
          std::vector<size_t> shape = terse.dim();
@@ -254,15 +255,7 @@
      auto prolix = [&] <typename T> (Terse<Concurrent>& terse, py::array& data, T type) {
          auto const buf = data.request();
          auto const shape = std::vector<size_t>(buf.shape.begin(), buf.shape.end());
-         if (terse.dim().empty()) {
-             if (shape.size() != 1 || shape[0] != terse.size())
-                 throw py::value_error("Dimension mismatch: Terse cannot expand data into array because of shape mismatch.");
-         }
-         else if (terse.number_of_frames() == 1) {
-             if (terse.dim() != shape)
-                 throw py::value_error("Dimension mismatch: Terse cannot expand data into array because of shape mismatch.");
-         }
-         else if (terse.dim() != std::vector<size_t>(shape.begin() + 1, shape.end()) && shape[0] != terse.number_of_frames())
+         if (shape != pyshape_of_terse(terse))
              throw py::value_error("Dimension mismatch: Terse cannot expand data into array because of shape mismatch.");
          T* base_ptr = static_cast<T*>(buf.ptr);
          std::vector<std::span<T>> frames;

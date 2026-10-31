@@ -255,6 +255,34 @@ class TestTerseLibrary(unittest.TestCase):
             data = np.repeat(np.array([np.iinfo(dtype).max, 0, 1, 0, 2], dtype=dtype), 12)
             np.testing.assert_array_equal(Terse(data).prolix(), data)
 
+    def test_prolix_frames_without_dimensions(self):
+        """Test decompressing several frames without dimensions"""
+        # Terse objects written by C++ code, e.g. by the HDF5 filter, may have
+        # several frames but no dimensions.
+        data = np.arange(3 * 24, dtype=np.uint16).reshape(3, 24)
+        terse = Terse()
+        for frame in data:
+            terse.push_back(frame)
+        stream = io.BytesIO()
+        terse.write(stream)
+        self.assertIn(b'dimensions="24 " ', stream.getvalue())
+        terse = Terse(io.BytesIO(stream.getvalue().replace(b'dimensions="24 " ', b'')))
+        self.assertEqual(terse.dim(), [])
+        self.assertEqual(terse.number_of_frames, 3)
+        np.testing.assert_array_equal(terse.prolix(), data)
+        np.testing.assert_array_equal(terse.prolix(np.zeros((3, 24), dtype=np.uint16)), data)
+        with self.assertRaises(ValueError):
+            terse.prolix(np.zeros(24, dtype=np.uint16))
+
+    def test_prolix_shape_mismatch(self):
+        """Test decompressing into an array of the wrong shape"""
+        terse = Terse()
+        for frame in np.arange(3 * 24, dtype=np.uint16).reshape(3, 24):
+            terse.push_back(frame)
+        for shape in [(2, 24), (4, 24), (3, 12), (72,), (24,)]:
+            with self.assertRaises(ValueError):
+                terse.prolix(np.zeros(shape, dtype=np.uint16))
+
     def test_compression_settings(self):
         """Test compression settings"""
         terse = Terse()
