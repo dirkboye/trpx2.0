@@ -140,6 +140,20 @@ class TestTerseLibrary(unittest.TestCase):
             with self.assertRaises(ValueError):
                 terse.prolix(np.zeros(shape, dtype=np.uint16))
 
+    def test_non_contiguous_arrays(self):
+        """Test compressing non-contiguous arrays and decompressing into them"""
+        data = np.arange(48 * 3, dtype=np.uint16).reshape(48, 3)
+        frames = np.arange(3 * 2 * 24, dtype=np.uint16).reshape(3, 2, 24)
+        for view in [data[::2, 0], data[::-1, 1], data[:, ::2], data.T, frames[:, :, ::-1]]:
+            np.testing.assert_array_equal(Terse(view).prolix(), view)
+        terse = Terse(data[:, 0])
+        with self.assertRaises(ValueError):
+            terse.prolix(np.zeros((48, 2), dtype=np.uint16)[:, 0])
+        read_only = np.zeros(48, dtype=np.uint16)
+        read_only.flags.writeable = False
+        with self.assertRaises(ValueError):
+            terse.prolix(read_only)
+
     def test_compression_settings(self):
         """Test compression settings"""
         terse = Terse()
