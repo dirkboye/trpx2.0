@@ -108,13 +108,26 @@
          }
          
          /**
-          * @brief Read a character when the input buffer is empty
+          * @brief Return the next character without consuming it
           * @return The next character as an int, or EOF if no more characters
           */
          int underflow() override {
+             // There is no get area (it would have to outlive this function
+             // and be accounted for by xsgetn and seekoff). Read the character
+             // and move the Python stream back instead.
              char c;
              if (xsgetn(&c, 1) == 0) return traits_type::eof();
-             setg(&c, &c, &c + 1);
+             seekoff(-1, std::ios_base::cur, std::ios_base::in);
+             return traits_type::to_int_type(c);
+         }
+
+         /**
+          * @brief Read and consume the next character
+          * @return The next character as an int, or EOF if no more characters
+          */
+         int uflow() override {
+             char c;
+             if (xsgetn(&c, 1) == 0) return traits_type::eof();
              return traits_type::to_int_type(c);
          }
          

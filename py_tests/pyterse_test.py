@@ -112,6 +112,18 @@ class TestTerseLibrary(unittest.TestCase):
         terse_read = Terse(stream)
         np.testing.assert_array_equal(terse_read.prolix(), self.test_data_1d)
 
+    def test_stream_several_objects(self):
+        """Test reading several Terse objects from one stream"""
+        data = [np.arange(24, dtype=np.uint16), np.arange(48, dtype=np.int32) - 24]
+        stream = io.BytesIO()
+        for values in data:
+            stream.write(b"text before the header ")
+            Terse(values).write(stream)
+        stream.seek(0)
+        for values in data:
+            np.testing.assert_array_equal(Terse(stream).prolix(), values)
+        self.assertEqual(stream.tell(), len(stream.getvalue()))
+
     def test_prolix_frames_without_dimensions(self):
         """Test decompressing several frames without dimensions"""
         # Terse objects written by C++ code, e.g. by the HDF5 filter, may have
